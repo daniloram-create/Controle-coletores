@@ -3,12 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Coletores - Fut Fanatics</title>
+    <title>Controle de Coletores - Logística Central</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>body { font-family: 'Inter', sans-serif; }</style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <!-- OVERLAY DE CARREGAMENTO -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/90 z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-[#0b2347] mb-4"></div>
+        <h2 id="loadingText" class="text-[#0b2347] text-xl font-bold tracking-wider animate-pulse">Sincronizando com Banco de Dados...</h2>
+    </div>
 
     <!-- HEADER -->
     <header class="bg-[#0b2347] text-white py-4 px-6 shadow-md sticky top-0 z-40">
@@ -16,24 +22,29 @@
             <div class="flex items-center gap-3">
                 <img src="https://logodownload.org/wp-content/uploads/2026/05/fut-fanatics-logo.png" alt="Fut Fanatics" class="h-12 w-auto object-contain bg-white px-3 py-1.5 rounded-xl shadow-sm">
                 <span class="h-8 w-[1px] bg-blue-900/50 hidden md:block"></span>
-                <span class="text-xs text-blue-200 tracking-widest uppercase font-bold hidden md:block">Logística & CPD</span>
+                <span class="text-xs text-blue-200 tracking-widest uppercase font-bold hidden md:block">Controle dos coletores</span>
             </div>
             
             <!-- MENU -->
             <nav class="flex flex-wrap justify-center bg-blue-950/50 p-1 rounded-xl border border-blue-900/30 gap-1">
-                <button onclick="mudarAba('painel')" id="btn-tab-painel" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-[#0b2347] shadow-sm">
+                <button onclick="mudarAba('painel')" id="btn-tab-painel" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-[#0b2347] shadow-sm flex items-center gap-1">
                     🎛️ Painel Geral
                 </button>
-                <button onclick="mudarAba('historico')" id="btn-tab-historico" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white">
+                <button onclick="mudarAba('historico')" id="btn-tab-historico" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white flex items-center gap-1">
                     📊 Histórico
                 </button>
-                <!-- Abas Restritas -->
                 <button onclick="tentarAcessarAdmin('coletores')" id="btn-tab-coletores" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white flex items-center gap-1">
                     🔒 Coletores
                 </button>
                 <button onclick="tentarAcessarAdmin('usuarios')" id="btn-tab-usuarios" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white flex items-center gap-1">
                     🔒 Usuários
                 </button>
+                
+                <!-- BOTÃO DE ATUALIZAR -->
+                <button onclick="forcarAtualizacao()" class="ml-2 px-4 py-2 rounded-lg text-sm font-bold transition-all bg-emerald-100 text-emerald-900 hover:bg-emerald-200 shadow-sm flex items-center gap-1">
+                    🔄 Sincronizar
+                </button>
+
                 <button onclick="sairModoAdmin()" id="btn-sair-admin" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-red-500 hover:bg-red-600 text-white transition-all ml-2">
                     Sair do Admin
                 </button>
@@ -62,7 +73,7 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-800">Histórico de Retiradas e Devoluções</h3>
-                    <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-semibold">Auditoria Ativa</span>
+                    <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-semibold">Auditoria Ativa - Nuvem</span>
                 </div>
                 <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
                     <table class="w-full text-left border-collapse whitespace-nowrap">
@@ -76,9 +87,7 @@
                                 <th class="pb-3">Tempo de Uso</th>
                             </tr>
                         </thead>
-                        <tbody id="listaHistorico" class="text-gray-700 text-sm">
-                            <!-- Gerado via JS -->
-                        </tbody>
+                        <tbody id="listaHistorico" class="text-gray-700 text-sm"></tbody>
                     </table>
                 </div>
             </div>
@@ -86,9 +95,6 @@
 
         <!-- ABA: CADASTRO DE COLETORES (ADMIN) -->
         <div id="tab-coletores" class="hidden space-y-6 definition-tab">
-            <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2">
-                🛡️ Modo Administrador Ativo
-            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
                     <h3 class="text-lg font-bold text-gray-800 mb-4">Novo Coletor</h3>
@@ -109,17 +115,13 @@
 
         <!-- ABA: CADASTRO DE USUÁRIOS (ADMIN) -->
         <div id="tab-usuarios" class="hidden space-y-6 definition-tab">
-            <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2">
-                🛡️ Modo Administrador Ativo
-            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
                     <h3 class="text-lg font-bold text-gray-800 mb-4">Novo Usuário</h3>
                     <form id="formNovoUsuario" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Login</label>
-                            <!-- CORREÇÃO APLICADA NESTA LINHA -->
-                            <input type="text" id="novoUsuarioLogin" required placeholder="Ex: joao.silva" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none">
+                            <input type="text" id="novoUsuarioLogin" required placeholder="Ex: danilo.ramires" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Setor de Origem</label>
@@ -154,15 +156,15 @@
         </div>
     </main>
 
-    <!-- Modal Login Admin -->
+    <!-- Modais de Ações -->
     <div id="modalAdmin" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50 backdrop-blur-sm">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
             <h3 class="text-xl font-bold text-gray-900 mb-2">Acesso Restrito</h3>
-            <p class="text-sm text-gray-500 mb-4">Insira credenciais de Administrador para acessar esta área.</p>
+            <p class="text-sm text-gray-500 mb-4">Insira credenciais de Administrador.</p>
             <form id="formLoginAdmin" class="space-y-4">
                 <input type="text" id="adminLogin" required placeholder="Login Admin" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                 <input type="password" id="adminSenha" required placeholder="Senha" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                <p id="msgErroAdmin" class="text-red-500 text-xs hidden font-semibold">Credenciais inválidas ou sem permissão.</p>
+                <p id="msgErroAdmin" class="text-red-500 text-xs hidden font-semibold">Credenciais inválidas.</p>
                 <div class="flex gap-2">
                     <button type="button" onclick="fecharModalAdmin()" class="flex-1 bg-gray-100 py-2 rounded-lg font-semibold text-gray-700">Cancelar</button>
                     <button type="submit" class="flex-1 bg-[#0b2347] text-white py-2 rounded-lg font-semibold">Acessar</button>
@@ -171,19 +173,17 @@
         </div>
     </div>
 
-    <!-- Modal Editar Senha -->
     <div id="modalEditaSenha" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6">
             <h3 class="text-lg font-bold text-gray-900 mb-4">Nova senha para: <span id="txtEditaSenhaUser" class="text-blue-600"></span></h3>
             <input type="password" id="novaSenhaInput" required placeholder="Digite a nova senha" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4">
             <div class="flex gap-2">
                 <button onclick="document.getElementById('modalEditaSenha').classList.replace('flex','hidden')" class="flex-1 bg-gray-100 py-2 rounded-lg font-semibold">Cancelar</button>
-                <button onclick="salvarNovaSenha()" class="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-semibold">Salvar Senha</button>
+                <button onclick="salvarNovaSenha()" class="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-semibold">Salvar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Retirada -->
     <div id="modalRetirada" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden">
             <div class="bg-[#0b2347] text-white p-5"><h3 class="text-xl font-bold">🚀 Autenticar Retirada: <span id="txtRetiradaColetorId"></span></h3></div>
@@ -205,7 +205,6 @@
         </div>
     </div>
 
-    <!-- Modal Devolução -->
     <div id="modalDevolucao" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden">
             <div class="bg-amber-600 text-white p-5"><h3 class="text-xl font-bold">📥 Devolução: <span id="txtDevolucaoColetorId"></span></h3></div>
@@ -228,60 +227,121 @@
     </div>
 
     <script>
-        // BANCO DE DADOS LOCAL (V5 - Correção do HTML e alertas de feedback)
+        // CONFIGURAÇÃO DO GOOGLE SHEETS COM A URL FORNECIDA
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyIB3ZX4XStn4tx0u3lY0P-Nu9jG2FiFmxgNd_cJSMtVGonFeiUoFJHweHqKA87GJ5Jbw/exec'; 
+        
         const COLETORES_INICIAIS = [
             { id: 'COL-01', status: 'disponivel', usuario: '', timestamp: null },
             { id: 'COL-02', status: 'disponivel', usuario: '', timestamp: null }
         ];
-        
-        const USUARIOS_INICIAIS = [{ login: 'danilo.ramires', senha: '123456', setor: 'Administração', isAdmin: true }];
+        const USUARIOS_INICIAIS = [{ login: 'danilo.ramires', senha: '123', setor: 'Administração', isAdmin: true }];
 
-        let coletores = JSON.parse(localStorage.getItem('fut_coletores_v5'));
-        if (!Array.isArray(coletores)) coletores = COLETORES_INICIAIS;
-        
-        let usuarios = JSON.parse(localStorage.getItem('fut_usuarios_v5'));
-        if (!Array.isArray(usuarios)) usuarios = USUARIOS_INICIAIS;
-        
-        let historico = JSON.parse(localStorage.getItem('fut_historico_v5'));
-        if (!Array.isArray(historico)) historico = [];
+        let coletores = [];
+        let usuarios = [];
+        let historico = [];
         
         let coletorSelecionado = null;
         let adminAutenticado = false;
         let abaPendente = null;
         let usuarioEditandoSenha = null;
 
-        window.addEventListener('DOMContentLoaded', () => {
+        // INICIALIZAÇÃO E SINCRONIZAÇÃO MANUAL
+        window.addEventListener('DOMContentLoaded', async () => {
+            await carregarDoSheets();
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            atualizarTelas();
+            document.getElementById('inputCodigo').focus();
+        });
+
+        async function forcarAtualizacao() {
+            const overlay = document.getElementById('loadingOverlay');
+            const texto = document.getElementById('loadingText');
+            
+            texto.innerText = "Buscando dados recentes da nuvem...";
+            overlay.classList.remove('hidden');
+            
+            await carregarDoSheets();
+            atualizarTelas();
+            
+            overlay.classList.add('hidden');
+            texto.innerText = "Sincronizando com Banco de Dados...";
+        }
+
+        function atualizarTelas() {
             renderizarPainel();
             renderizarHistorico();
             renderizarColetoresCadastrados();
             renderizarUsuariosCadastrados();
-            document.getElementById('inputCodigo').focus();
-        });
+        }
 
-        // NAVEGAÇÃO E AUTENTICAÇÃO ADMIN
+        async function carregarDoSheets() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.dados) {
+                    coletores = data.dados.coletores || [];
+                    usuarios = data.dados.usuarios || [];
+                    historico = data.dados.historico || [];
+                }
+
+                // Injeta dados padrão se o banco estiver 100% vazio
+                if(coletores.length === 0) coletores = COLETORES_INICIAIS;
+                if(usuarios.length === 0) usuarios = USUARIOS_INICIAIS;
+
+            } catch (error) {
+                console.error("Erro de conexão.", error);
+                alert("Falha de comunicação com o Banco de Dados. Verifique a URL inserida.");
+            }
+        }
+
+        async function salvarNoSheets() {
+            atualizarTelas();
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'save',
+                        dados: { coletores, usuarios, historico }
+                    })
+                });
+            } catch (error) {
+                console.error("Erro ao salvar os dados na nuvem.", error);
+            }
+        }
+
+        // NAVEGAÇÃO
         function mudarAba(abaNome) {
             document.querySelectorAll('.definition-tab').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${abaNome}`).classList.remove('hidden');
 
             ['painel', 'historico', 'coletores', 'usuarios'].forEach(aba => {
                 const btn = document.getElementById(`btn-tab-${aba}`);
-                if(btn) btn.className = (aba === abaNome) 
-                    ? "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-[#0b2347] shadow-sm flex items-center gap-1"
-                    : "px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white flex items-center gap-1";
+                if(btn) {
+                    // Reseta estilos
+                    btn.classList.remove('bg-white', 'text-[#0b2347]', 'shadow-sm');
+                    btn.classList.add('text-blue-200', 'hover:text-white');
+                    
+                    // Aplica estilo ativo
+                    if(aba === abaNome) {
+                        btn.classList.add('bg-white', 'text-[#0b2347]', 'shadow-sm');
+                        btn.classList.remove('text-blue-200', 'hover:text-white');
+                    }
+                }
             });
-
             if (abaNome === 'painel') document.getElementById('inputCodigo').focus();
         }
 
         function tentarAcessarAdmin(abaNome) {
-            if (adminAutenticado) {
-                mudarAba(abaNome);
-            } else {
+            if (adminAutenticado) { mudarAba(abaNome); } 
+            else {
                 abaPendente = abaNome;
                 document.getElementById('msgErroAdmin').classList.add('hidden');
                 document.getElementById('formLoginAdmin').reset();
                 document.getElementById('modalAdmin').classList.replace('hidden', 'flex');
-                document.getElementById('adminLogin').focus();
+                setTimeout(()=>document.getElementById('adminLogin').focus(), 100);
             }
         }
 
@@ -289,8 +349,7 @@
             e.preventDefault();
             const login = document.getElementById('adminLogin').value.trim().toLowerCase();
             const senha = document.getElementById('adminSenha').value;
-
-            const user = usuarios.find(u => u.login === login && u.senha === senha && u.isAdmin);
+            const user = usuarios.find(u => u.login === login && String(u.senha) === senha && u.isAdmin);
 
             if (user) {
                 adminAutenticado = true;
@@ -302,17 +361,10 @@
             }
         });
 
-        function fecharModalAdmin() {
-            document.getElementById('modalAdmin').classList.replace('flex', 'hidden');
-        }
+        function fecharModalAdmin() { document.getElementById('modalAdmin').classList.replace('flex', 'hidden'); }
+        function sairModoAdmin() { adminAutenticado = false; document.getElementById('btn-sair-admin').classList.add('hidden'); mudarAba('painel'); }
 
-        function sairModoAdmin() {
-            adminAutenticado = false;
-            document.getElementById('btn-sair-admin').classList.add('hidden');
-            mudarAba('painel');
-        }
-
-        // LÓGICA DE BIPAGEM, RETIRADA E DEVOLUÇÃO
+        // LÓGICA DE COLETORES
         function renderizarPainel() {
             const grid = document.getElementById('gridColetores');
             grid.innerHTML = '';
@@ -371,7 +423,7 @@
             e.preventDefault();
             const login = document.getElementById('retiradaUsuarioSelect').value;
             const senha = document.getElementById('retiradaSenha').value;
-            const user = usuarios.find(u => u.login === login && u.senha === senha);
+            const user = usuarios.find(u => u.login === login && String(u.senha) === senha);
 
             if (user) {
                 const agora = Date.now();
@@ -380,19 +432,13 @@
                 coletorSelecionado.timestamp = agora;
 
                 historico.unshift({
-                    idColetor: coletorSelecionado.id,
-                    usuario: login,
-                    setor: user.setor,
-                    dataRetirada: agora,
-                    dataDevolucao: null,
-                    tempoTotal: null
+                    idColetor: coletorSelecionado.id, usuario: login, setor: user.setor,
+                    dataRetirada: agora, dataDevolucao: null, tempoTotal: null
                 });
 
-                salvarTudo();
+                salvarNoSheets();
                 fecharModaisAcao();
-            } else {
-                document.getElementById('msgErroSenhaRetirada').classList.remove('hidden');
-            }
+            } else { document.getElementById('msgErroSenhaRetirada').classList.remove('hidden'); }
         });
 
         function abrirModalDevolucao() {
@@ -413,7 +459,7 @@
             const senha = document.getElementById('devolucaoSenha').value;
             const user = usuarios.find(u => u.login === coletorSelecionado.usuario);
 
-            if (user && senha === user.senha) {
+            if (user && senha === String(user.senha)) {
                 const agora = Date.now();
                 const registroPendente = historico.find(h => h.idColetor === coletorSelecionado.id && h.dataDevolucao === null);
                 
@@ -426,11 +472,9 @@
                 coletorSelecionado.usuario = '';
                 coletorSelecionado.timestamp = null;
 
-                salvarTudo();
+                salvarNoSheets();
                 fecharModaisAcao();
-            } else {
-                document.getElementById('msgErroSenhaDevolucao').classList.remove('hidden');
-            }
+            } else { document.getElementById('msgErroSenhaDevolucao').classList.remove('hidden'); }
         });
 
         function fecharModaisAcao() {
@@ -440,7 +484,7 @@
             document.getElementById('inputCodigo').focus();
         }
 
-        // GERENCIAMENTO: HISTÓRICO, USUÁRIOS E COLETORES
+        // TABELAS ADMINISTRATIVAS E DE HISTÓRICO
         function renderizarHistorico() {
             const tbody = document.getElementById('listaHistorico');
             tbody.innerHTML = historico.map(h => {
@@ -457,8 +501,7 @@
                     <td class="py-3 font-mono ${estaEmUso ? 'text-amber-500' : 'text-emerald-700 font-bold'}">
                         ${estaEmUso ? 'Em uso' : h.tempoTotal}
                     </td>
-                </tr>
-                `;
+                </tr>`;
             }).join('') || `<tr><td colspan="6" class="py-6 text-center text-gray-400">Nenhum registro de uso ainda.</td></tr>`;
         }
 
@@ -473,9 +516,7 @@
 
             usuarios.push({ login, senha, setor, isAdmin });
             e.target.reset();
-            salvarTudo();
-            
-            // Alerta visual confirmando sucesso
+            salvarNoSheets();
             alert("✅ Usuário cadastrado com sucesso!");
         });
 
@@ -505,7 +546,7 @@
             if(!nova) return alert("Digite uma senha.");
             usuarioEditandoSenha.senha = nova;
             document.getElementById('modalEditaSenha').classList.replace('flex', 'hidden');
-            salvarTudo();
+            salvarNoSheets();
             alert("✅ Senha alterada com sucesso!");
         }
 
@@ -516,9 +557,7 @@
             
             coletores.push({ id, status: 'disponivel', usuario: '', timestamp: null });
             e.target.reset();
-            salvarTudo();
-            
-            // Alerta visual confirmando sucesso
+            salvarNoSheets();
             alert("✅ Coletor cadastrado com sucesso!");
         });
 
@@ -534,24 +573,13 @@
         }
 
         function removerUsuario(i) {
-            if(coletores.some(c => c.usuario === usuarios[i].login)) return alert("❌ Usuário está com coletor em uso e não pode ser excluído agora.");
+            if(coletores.some(c => c.usuario === usuarios[i].login)) return alert("❌ Usuário está com coletor em uso.");
             if(usuarios[i].login === 'danilo.ramires') return alert("❌ O administrador mestre não pode ser excluído.");
-            if(confirm("Tem certeza que deseja excluir este usuário?")) { usuarios.splice(i, 1); salvarTudo(); }
+            if(confirm("Tem certeza que deseja excluir este usuário?")) { usuarios.splice(i, 1); salvarNoSheets(); }
         }
 
         function removerColetor(i) {
-            if(confirm("Tem certeza que deseja excluir este coletor?")) { coletores.splice(i, 1); salvarTudo(); }
-        }
-
-        // UTILITÁRIOS: PERSISTÊNCIA E TEMPO
-        function salvarTudo() {
-            localStorage.setItem('fut_coletores_v5', JSON.stringify(coletores));
-            localStorage.setItem('fut_usuarios_v5', JSON.stringify(usuarios));
-            localStorage.setItem('fut_historico_v5', JSON.stringify(historico));
-            renderizarPainel();
-            renderizarHistorico();
-            renderizarUsuariosCadastrados();
-            renderizarColetoresCadastrados();
+            if(confirm("Tem certeza que deseja excluir este coletor?")) { coletores.splice(i, 1); salvarNoSheets(); }
         }
 
         function calcularDiferenca(inicio, fim) {
