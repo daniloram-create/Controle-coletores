@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Coletores - Fut Fanatics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <!-- HEADER -->
+    <header class="bg-[#0b2347] text-white py-4 px-6 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <img src="https://logodownload.org/wp-content/uploads/2026/05/fut-fanatics-logo.png" alt="Fut Fanatics" class="h-12 w-auto object-contain bg-white px-3 py-1.5 rounded-xl shadow-sm">
+                <span class="h-8 w-[1px] bg-blue-900/50 hidden md:block"></span>
+                <span class="text-xs text-blue-200 tracking-widest uppercase font-bold hidden md:block">Logística & CPD</span>
+            </div>
+            
+            <!-- MENU -->
+            <nav class="flex flex-wrap justify-center bg-blue-950/50 p-1 rounded-xl border border-blue-900/30 gap-1">
+                <button onclick="mudarAba('painel')" id="btn-tab-painel" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-[#0b2347] shadow-sm">
+                    🎛️ Painel Geral
+                </button>
+                <button onclick="mudarAba('historico')" id="btn-tab-historico" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white">
+                    📊 Histórico
+                </button>
+                <!-- Abas Restritas -->
+                <button onclick="tentarAcessarAdmin('coletores')" id="btn-tab-coletores" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white flex items-center gap-1">
+                    🔒 Coletores
+                </button>
+                <button onclick="tentarAcessarAdmin('usuarios')" id="btn-tab-usuarios" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white flex items-center gap-1">
+                    🔒 Usuários
+                </button>
+                <button onclick="sairModoAdmin()" id="btn-sair-admin" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-red-500 hover:bg-red-600 text-white transition-all ml-2">
+                    Sair do Admin
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+        
+        <!-- ABA: PAINEL GERAL -->
+        <div id="tab-painel" class="space-y-6 definition-tab">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <form id="formBipagem" class="max-w-xl mx-auto text-center space-y-3">
+                    <label class="block text-gray-700 font-semibold text-lg">Bipe ou digite o código do coletor:</label>
+                    <input type="text" id="inputCodigo" placeholder="Ex: COL-01" autocomplete="off" class="w-full px-5 py-4 bg-gray-50 border border-gray-300 rounded-xl text-center text-xl font-bold tracking-widest text-[#0b2347] focus:ring-4 focus:ring-blue-100 outline-none uppercase transition-all">
+                </form>
+            </div>
+            <div>
+                <h2 class="text-gray-600 font-bold text-sm tracking-wider uppercase mb-4">Status em Tempo Real</h2>
+                <div id="gridColetores" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+            </div>
+        </div>
+
+        <!-- ABA: HISTÓRICO -->
+        <div id="tab-historico" class="hidden space-y-6 definition-tab">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Histórico de Retiradas e Devoluções</h3>
+                    <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-semibold">Auditoria Ativa</span>
+                </div>
+                <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead class="sticky top-0 bg-white">
+                            <tr class="border-b border-gray-200 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                                <th class="pb-3 pr-4">Data/Hora Retirada</th>
+                                <th class="pb-3 pr-4">Data/Hora Devolução</th>
+                                <th class="pb-3 pr-4">Coletor</th>
+                                <th class="pb-3 pr-4">Usuário</th>
+                                <th class="pb-3 pr-4">Setor</th>
+                                <th class="pb-3">Tempo de Uso</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaHistorico" class="text-gray-700 text-sm">
+                            <!-- Gerado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA: CADASTRO DE COLETORES (ADMIN) -->
+        <div id="tab-coletores" class="hidden space-y-6 definition-tab">
+            <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2">
+                🛡️ Modo Administrador Ativo
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Novo Coletor</h3>
+                    <form id="formNovoColetor" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Código do Coletor</label>
+                            <input type="text" id="novoColetorId" required placeholder="Ex: COL-07" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none uppercase font-semibold">
+                        </div>
+                        <button type="submit" class="w-full bg-[#0b2347] text-white font-semibold py-2.5 rounded-lg cursor-pointer hover:bg-blue-900 transition">➕ Adicionar Coletor</button>
+                    </form>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 md:col-span-2">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Coletores Cadastrados</h3>
+                    <table class="w-full text-left border-collapse"><tbody id="listaColetoresCadastrados" class="divide-y divide-gray-100"></tbody></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA: CADASTRO DE USUÁRIOS (ADMIN) -->
+        <div id="tab-usuarios" class="hidden space-y-6 definition-tab">
+            <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2">
+                🛡️ Modo Administrador Ativo
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Novo Usuário</h3>
+                    <form id="formNovoUsuario" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Login</label>
+                            <!-- CORREÇÃO APLICADA NESTA LINHA -->
+                            <input type="text" id="novoUsuarioLogin" required placeholder="Ex: joao.silva" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Setor de Origem</label>
+                            <input type="text" id="novoUsuarioSetor" required placeholder="Ex: Separação, Expedição" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                            <input type="password" id="novoUsuarioSenha" required class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none">
+                        </div>
+                        <label class="flex items-center gap-2 mt-2">
+                            <input type="checkbox" id="novoUsuarioAdmin" class="w-4 h-4 text-blue-600 rounded">
+                            <span class="text-sm text-gray-700 font-semibold">Dar permissão de Administrador</span>
+                        </label>
+                        <button type="submit" class="w-full bg-[#0b2347] text-white font-semibold py-2.5 rounded-lg cursor-pointer hover:bg-blue-900 transition">➕ Cadastrar Usuário</button>
+                    </form>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 md:col-span-2 overflow-x-auto">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Usuários do Sistema</h3>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-gray-200 text-gray-400 text-xs uppercase tracking-wider font-semibold">
+                                <th class="pb-2">Login</th>
+                                <th class="pb-2">Setor</th>
+                                <th class="pb-2">Perfil</th>
+                                <th class="pb-2 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaUsuariosCadastrados" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Login Admin -->
+    <div id="modalAdmin" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Acesso Restrito</h3>
+            <p class="text-sm text-gray-500 mb-4">Insira credenciais de Administrador para acessar esta área.</p>
+            <form id="formLoginAdmin" class="space-y-4">
+                <input type="text" id="adminLogin" required placeholder="Login Admin" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <input type="password" id="adminSenha" required placeholder="Senha" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <p id="msgErroAdmin" class="text-red-500 text-xs hidden font-semibold">Credenciais inválidas ou sem permissão.</p>
+                <div class="flex gap-2">
+                    <button type="button" onclick="fecharModalAdmin()" class="flex-1 bg-gray-100 py-2 rounded-lg font-semibold text-gray-700">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-[#0b2347] text-white py-2 rounded-lg font-semibold">Acessar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Senha -->
+    <div id="modalEditaSenha" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Nova senha para: <span id="txtEditaSenhaUser" class="text-blue-600"></span></h3>
+            <input type="password" id="novaSenhaInput" required placeholder="Digite a nova senha" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4">
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('modalEditaSenha').classList.replace('flex','hidden')" class="flex-1 bg-gray-100 py-2 rounded-lg font-semibold">Cancelar</button>
+                <button onclick="salvarNovaSenha()" class="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-semibold">Salvar Senha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Retirada -->
+    <div id="modalRetirada" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden">
+            <div class="bg-[#0b2347] text-white p-5"><h3 class="text-xl font-bold">🚀 Autenticar Retirada: <span id="txtRetiradaColetorId"></span></h3></div>
+            <form id="formRetirada" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Selecione seu Usuário</label>
+                    <select id="retiradaUsuarioSelect" required class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Sua Senha</label>
+                    <input type="password" id="retiradaSenha" required class="w-full px-4 py-2 border border-gray-300 rounded-lg text-center font-bold tracking-widest">
+                    <p id="msgErroSenhaRetirada" class="text-red-600 text-xs mt-1 hidden font-semibold">⚠️ Senha incorreta!</p>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="fecharModaisAcao()" class="flex-1 bg-gray-100 py-2.5 rounded-lg font-semibold">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-[#0b2347] text-white py-2.5 rounded-lg font-semibold">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Devolução -->
+    <div id="modalDevolucao" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden">
+            <div class="bg-amber-600 text-white p-5"><h3 class="text-xl font-bold">📥 Devolução: <span id="txtDevolucaoColetorId"></span></h3></div>
+            <div class="bg-amber-50 p-4 border-b text-center">
+                <p class="text-sm">Responsável: <strong id="txtDevolucaoUsuario"></strong> (<span id="txtDevolucaoSetor"></span>)</p>
+                <p id="txtDevolucaoTimer" class="text-2xl font-black text-amber-900 mt-2">00:00:00</p>
+            </div>
+            <form id="formDevolucao" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Senha para Baixa</label>
+                    <input type="password" id="devolucaoSenha" required class="w-full px-4 py-2 border border-gray-300 rounded-lg text-center font-bold tracking-widest">
+                    <p id="msgErroSenhaDevolucao" class="text-red-600 text-xs mt-1 hidden font-semibold">⚠️ Senha incorreta!</p>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="fecharModaisAcao()" class="flex-1 bg-gray-100 py-2.5 rounded-lg font-semibold">Voltar</button>
+                    <button type="submit" class="flex-1 bg-amber-600 text-white py-2.5 rounded-lg font-semibold">Confirmar Baixa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // BANCO DE DADOS LOCAL (V5 - Correção do HTML e alertas de feedback)
+        const COLETORES_INICIAIS = [
+            { id: 'COL-01', status: 'disponivel', usuario: '', timestamp: null },
+            { id: 'COL-02', status: 'disponivel', usuario: '', timestamp: null }
+        ];
+        
+        const USUARIOS_INICIAIS = [{ login: 'danilo.ramires', senha: '123456', setor: 'Administração', isAdmin: true }];
+
+        let coletores = JSON.parse(localStorage.getItem('fut_coletores_v5'));
+        if (!Array.isArray(coletores)) coletores = COLETORES_INICIAIS;
+        
+        let usuarios = JSON.parse(localStorage.getItem('fut_usuarios_v5'));
+        if (!Array.isArray(usuarios)) usuarios = USUARIOS_INICIAIS;
+        
+        let historico = JSON.parse(localStorage.getItem('fut_historico_v5'));
+        if (!Array.isArray(historico)) historico = [];
+        
+        let coletorSelecionado = null;
+        let adminAutenticado = false;
+        let abaPendente = null;
+        let usuarioEditandoSenha = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderizarPainel();
+            renderizarHistorico();
+            renderizarColetoresCadastrados();
+            renderizarUsuariosCadastrados();
+            document.getElementById('inputCodigo').focus();
+        });
+
+        // NAVEGAÇÃO E AUTENTICAÇÃO ADMIN
+        function mudarAba(abaNome) {
+            document.querySelectorAll('.definition-tab').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${abaNome}`).classList.remove('hidden');
+
+            ['painel', 'historico', 'coletores', 'usuarios'].forEach(aba => {
+                const btn = document.getElementById(`btn-tab-${aba}`);
+                if(btn) btn.className = (aba === abaNome) 
+                    ? "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-[#0b2347] shadow-sm flex items-center gap-1"
+                    : "px-4 py-2 rounded-lg text-sm font-semibold transition-all text-blue-200 hover:text-white flex items-center gap-1";
+            });
+
+            if (abaNome === 'painel') document.getElementById('inputCodigo').focus();
+        }
+
+        function tentarAcessarAdmin(abaNome) {
+            if (adminAutenticado) {
+                mudarAba(abaNome);
+            } else {
+                abaPendente = abaNome;
+                document.getElementById('msgErroAdmin').classList.add('hidden');
+                document.getElementById('formLoginAdmin').reset();
+                document.getElementById('modalAdmin').classList.replace('hidden', 'flex');
+                document.getElementById('adminLogin').focus();
+            }
+        }
+
+        document.getElementById('formLoginAdmin').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const login = document.getElementById('adminLogin').value.trim().toLowerCase();
+            const senha = document.getElementById('adminSenha').value;
+
+            const user = usuarios.find(u => u.login === login && u.senha === senha && u.isAdmin);
+
+            if (user) {
+                adminAutenticado = true;
+                fecharModalAdmin();
+                document.getElementById('btn-sair-admin').classList.remove('hidden');
+                mudarAba(abaPendente);
+            } else {
+                document.getElementById('msgErroAdmin').classList.remove('hidden');
+            }
+        });
+
+        function fecharModalAdmin() {
+            document.getElementById('modalAdmin').classList.replace('flex', 'hidden');
+        }
+
+        function sairModoAdmin() {
+            adminAutenticado = false;
+            document.getElementById('btn-sair-admin').classList.add('hidden');
+            mudarAba('painel');
+        }
+
+        // LÓGICA DE BIPAGEM, RETIRADA E DEVOLUÇÃO
+        function renderizarPainel() {
+            const grid = document.getElementById('gridColetores');
+            grid.innerHTML = '';
+            
+            coletores.forEach(col => {
+                const emUso = col.status === 'em_uso';
+                const userObj = usuarios.find(u => u.login === col.usuario) || { setor: 'Desconhecido' };
+                
+                grid.innerHTML += `
+                    <div class="p-5 rounded-2xl border transition-all ${emUso ? 'bg-amber-50/60 border-amber-200' : 'bg-white border-gray-200'}">
+                        <div class="flex justify-between border-b pb-3 mb-3 ${emUso ? 'border-amber-200' : 'border-gray-100'}">
+                            <span class="text-xl font-bold">${col.id}</span>
+                            <span class="px-2 py-1 rounded-full text-xs font-bold uppercase ${emUso ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                                ${emUso ? 'Em Uso' : 'Livre'}
+                            </span>
+                        </div>
+                        ${emUso ? `
+                            <div class="space-y-1">
+                                <strong class="text-base text-gray-900 block truncate">${col.usuario}</strong>
+                                <span class="text-xs text-amber-700 block">${userObj.setor}</span>
+                                <span id="timer-${col.id}" class="text-lg font-black font-mono text-amber-900 pt-1 block">00:00:00</span>
+                            </div>
+                        ` : `<div class="py-4 text-center text-gray-400 text-sm">Aguardando uso</div>`}
+                    </div>`;
+            });
+            atualizarTimers();
+        }
+
+        document.getElementById('formBipagem').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('inputCodigo');
+            const codigo = input.value.trim().toUpperCase();
+            input.value = '';
+
+            const coletor = coletores.find(c => c.id === codigo);
+            if (!coletor) return alert(`Coletor "${codigo}" não encontrado.`);
+
+            coletorSelecionado = coletor;
+            coletor.status === 'disponivel' ? abrirModalRetirada() : abrirModalDevolucao();
+        });
+
+        function abrirModalRetirada() {
+            if (usuarios.length === 0) return alert("Nenhum usuário cadastrado.");
+            document.getElementById('txtRetiradaColetorId').innerText = coletorSelecionado.id;
+            document.getElementById('msgErroSenhaRetirada').classList.add('hidden');
+            
+            const select = document.getElementById('retiradaUsuarioSelect');
+            select.innerHTML = usuarios.map(u => `<option value="${u.login}">${u.login} - ${u.setor}</option>`).join('');
+            
+            document.getElementById('formRetirada').reset();
+            document.getElementById('modalRetirada').classList.replace('hidden', 'flex');
+            setTimeout(() => document.getElementById('retiradaSenha').focus(), 100);
+        }
+
+        document.getElementById('formRetirada').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const login = document.getElementById('retiradaUsuarioSelect').value;
+            const senha = document.getElementById('retiradaSenha').value;
+            const user = usuarios.find(u => u.login === login && u.senha === senha);
+
+            if (user) {
+                const agora = Date.now();
+                coletorSelecionado.status = 'em_uso';
+                coletorSelecionado.usuario = login;
+                coletorSelecionado.timestamp = agora;
+
+                historico.unshift({
+                    idColetor: coletorSelecionado.id,
+                    usuario: login,
+                    setor: user.setor,
+                    dataRetirada: agora,
+                    dataDevolucao: null,
+                    tempoTotal: null
+                });
+
+                salvarTudo();
+                fecharModaisAcao();
+            } else {
+                document.getElementById('msgErroSenhaRetirada').classList.remove('hidden');
+            }
+        });
+
+        function abrirModalDevolucao() {
+            const userObj = usuarios.find(u => u.login === coletorSelecionado.usuario) || { setor: 'N/A' };
+            document.getElementById('txtDevolucaoColetorId').innerText = coletorSelecionado.id;
+            document.getElementById('txtDevolucaoUsuario').innerText = coletorSelecionado.usuario;
+            document.getElementById('txtDevolucaoSetor').innerText = userObj.setor;
+            document.getElementById('msgErroSenhaDevolucao').classList.add('hidden');
+            document.getElementById('txtDevolucaoTimer').innerText = calcularDiferenca(coletorSelecionado.timestamp, Date.now());
+            document.getElementById('formDevolucao').reset();
+            
+            document.getElementById('modalDevolucao').classList.replace('hidden', 'flex');
+            setTimeout(() => document.getElementById('devolucaoSenha').focus(), 100);
+        }
+
+        document.getElementById('formDevolucao').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const senha = document.getElementById('devolucaoSenha').value;
+            const user = usuarios.find(u => u.login === coletorSelecionado.usuario);
+
+            if (user && senha === user.senha) {
+                const agora = Date.now();
+                const registroPendente = historico.find(h => h.idColetor === coletorSelecionado.id && h.dataDevolucao === null);
+                
+                if (registroPendente) {
+                    registroPendente.dataDevolucao = agora;
+                    registroPendente.tempoTotal = calcularDiferenca(registroPendente.dataRetirada, agora);
+                }
+
+                coletorSelecionado.status = 'disponivel';
+                coletorSelecionado.usuario = '';
+                coletorSelecionado.timestamp = null;
+
+                salvarTudo();
+                fecharModaisAcao();
+            } else {
+                document.getElementById('msgErroSenhaDevolucao').classList.remove('hidden');
+            }
+        });
+
+        function fecharModaisAcao() {
+            document.getElementById('modalRetirada').classList.replace('flex', 'hidden');
+            document.getElementById('modalDevolucao').classList.replace('flex', 'hidden');
+            coletorSelecionado = null;
+            document.getElementById('inputCodigo').focus();
+        }
+
+        // GERENCIAMENTO: HISTÓRICO, USUÁRIOS E COLETORES
+        function renderizarHistorico() {
+            const tbody = document.getElementById('listaHistorico');
+            tbody.innerHTML = historico.map(h => {
+                const estaEmUso = h.dataDevolucao === null;
+                return `
+                <tr class="hover:bg-gray-50 border-b ${estaEmUso ? 'bg-amber-50/50 border-amber-100' : 'border-gray-100'}">
+                    <td class="py-3 pr-4">${new Date(h.dataRetirada).toLocaleString('pt-BR')}</td>
+                    <td class="py-3 pr-4 font-bold ${estaEmUso ? 'text-amber-600' : 'text-gray-700'}">
+                        ${estaEmUso ? '⏳ Pendente...' : new Date(h.dataDevolucao).toLocaleString('pt-BR')}
+                    </td>
+                    <td class="py-3 pr-4 font-bold text-gray-900">${h.idColetor}</td>
+                    <td class="py-3 pr-4 font-semibold">${h.usuario}</td>
+                    <td class="py-3 pr-4 text-gray-500">${h.setor}</td>
+                    <td class="py-3 font-mono ${estaEmUso ? 'text-amber-500' : 'text-emerald-700 font-bold'}">
+                        ${estaEmUso ? 'Em uso' : h.tempoTotal}
+                    </td>
+                </tr>
+                `;
+            }).join('') || `<tr><td colspan="6" class="py-6 text-center text-gray-400">Nenhum registro de uso ainda.</td></tr>`;
+        }
+
+        document.getElementById('formNovoUsuario').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const login = document.getElementById('novoUsuarioLogin').value.trim().toLowerCase();
+            const setor = document.getElementById('novoUsuarioSetor').value.trim();
+            const senha = document.getElementById('novoUsuarioSenha').value;
+            const isAdmin = document.getElementById('novoUsuarioAdmin').checked;
+
+            if (usuarios.some(u => u.login === login)) return alert("❌ Este login já existe!");
+
+            usuarios.push({ login, senha, setor, isAdmin });
+            e.target.reset();
+            salvarTudo();
+            
+            // Alerta visual confirmando sucesso
+            alert("✅ Usuário cadastrado com sucesso!");
+        });
+
+        function renderizarUsuariosCadastrados() {
+            document.getElementById('listaUsuariosCadastrados').innerHTML = usuarios.map((u, i) => `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="py-3 font-semibold">${u.login}</td>
+                    <td class="py-3 text-gray-600 text-sm">${u.setor}</td>
+                    <td class="py-3">${u.isAdmin ? '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">Admin</span>' : '<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">Padrão</span>'}</td>
+                    <td class="py-3 text-right space-x-1">
+                        <button onclick="abrirModalEditaSenha('${u.login}')" class="text-blue-600 hover:underline text-xs font-semibold px-2">Senha</button>
+                        <button onclick="removerUsuario(${i})" class="text-red-500 hover:underline text-xs font-semibold px-2">Excluir</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function abrirModalEditaSenha(login) {
+            usuarioEditandoSenha = usuarios.find(u => u.login === login);
+            document.getElementById('txtEditaSenhaUser').innerText = login;
+            document.getElementById('novaSenhaInput').value = '';
+            document.getElementById('modalEditaSenha').classList.replace('hidden', 'flex');
+        }
+
+        function salvarNovaSenha() {
+            const nova = document.getElementById('novaSenhaInput').value;
+            if(!nova) return alert("Digite uma senha.");
+            usuarioEditandoSenha.senha = nova;
+            document.getElementById('modalEditaSenha').classList.replace('flex', 'hidden');
+            salvarTudo();
+            alert("✅ Senha alterada com sucesso!");
+        }
+
+        document.getElementById('formNovoColetor').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('novoColetorId').value.trim().toUpperCase();
+            if (coletores.some(c => c.id === id)) return alert("❌ Este Coletor já existe!");
+            
+            coletores.push({ id, status: 'disponivel', usuario: '', timestamp: null });
+            e.target.reset();
+            salvarTudo();
+            
+            // Alerta visual confirmando sucesso
+            alert("✅ Coletor cadastrado com sucesso!");
+        });
+
+        function renderizarColetoresCadastrados() {
+            document.getElementById('listaColetoresCadastrados').innerHTML = coletores.map((c, i) => `
+                <tr class="hover:bg-gray-50 border-b border-gray-100 text-sm">
+                    <td class="py-3 font-bold">${c.id}</td>
+                    <td class="py-3 text-right">
+                        <button onclick="removerColetor(${i})" class="text-red-500 text-xs font-bold hover:underline ${c.status==='em_uso'?'hidden':''}">Excluir</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function removerUsuario(i) {
+            if(coletores.some(c => c.usuario === usuarios[i].login)) return alert("❌ Usuário está com coletor em uso e não pode ser excluído agora.");
+            if(usuarios[i].login === 'danilo.ramires') return alert("❌ O administrador mestre não pode ser excluído.");
+            if(confirm("Tem certeza que deseja excluir este usuário?")) { usuarios.splice(i, 1); salvarTudo(); }
+        }
+
+        function removerColetor(i) {
+            if(confirm("Tem certeza que deseja excluir este coletor?")) { coletores.splice(i, 1); salvarTudo(); }
+        }
+
+        // UTILITÁRIOS: PERSISTÊNCIA E TEMPO
+        function salvarTudo() {
+            localStorage.setItem('fut_coletores_v5', JSON.stringify(coletores));
+            localStorage.setItem('fut_usuarios_v5', JSON.stringify(usuarios));
+            localStorage.setItem('fut_historico_v5', JSON.stringify(historico));
+            renderizarPainel();
+            renderizarHistorico();
+            renderizarUsuariosCadastrados();
+            renderizarColetoresCadastrados();
+        }
+
+        function calcularDiferenca(inicio, fim) {
+            if (!inicio) return "00:00:00";
+            const d = fim - inicio;
+            return `${Math.floor(d/3600000).toString().padStart(2,'0')}:${Math.floor((d%3600000)/60000).toString().padStart(2,'0')}:${Math.floor((d%60000)/1000).toString().padStart(2,'0')}`;
+        }
+
+        function atualizarTimers() {
+            coletores.filter(c => c.status === 'em_uso').forEach(c => {
+                const el = document.getElementById(`timer-${c.id}`);
+                if (el) el.innerText = calcularDiferenca(c.timestamp, Date.now());
+            });
+        }
+        setInterval(atualizarTimers, 1000);
+    </script>
+</body>
+</html>
